@@ -18,11 +18,8 @@ Common attributes of batch submission / resource manager environments will inclu
 """
 import asyncio
 import random
-import subprocess
-import tempfile
-from textwrap import dedent
 from async_generator import async_generator, yield_
-import asyncio, asyncssh, sys
+import asyncio, asyncssh
 import pwd
 import time
 import os
@@ -224,8 +221,7 @@ class BatchSpawnerBase(Spawner):
         return " ".join([self.batchspawner_singleuser_cmd] + self.cmd + self.get_args())
 
     async def run_command(self, cmd, input=None, env=None):
-
-        if getattr(self, 'input_as_file', False) and input is not None:
+        if getattr(self, "input_as_file", False) and input is not None:
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                 f.write(input)
                 f.flush()
@@ -248,7 +244,7 @@ class BatchSpawnerBase(Spawner):
 
         if input:
             inbytes = input.encode()
-            
+
         try:
             out, eout = await proc.communicate(input=inbytes)
         except:
@@ -472,7 +468,6 @@ class BatchSpawnerBase(Spawner):
                 )
             await gen.sleep(self.startup_poll_interval)
 
-
         while True:
             await self.query_job_log()
 
@@ -485,7 +480,7 @@ class BatchSpawnerBase(Spawner):
                 self.log.warn(f"failed to get ip: {e}")
             else:
                 self.log.info("no ip in log yet")
-            
+
             await gen.sleep(self.startup_poll_interval)
 
         self.ip = self.state_gethost()
@@ -698,7 +693,8 @@ set -eu
 
 class UserEnvMixin:
     """Mixin class that computes values for USER, SHELL and HOME in the environment passed to
-    the job submission subprocess in case the batch system needs these for the batch script."""
+    the job submission subprocess in case the batch system needs these for the batch script.
+    """
 
     def user_env(self, env):
         """get user environment"""
@@ -1021,8 +1017,6 @@ set -eu
 # vim: set ai expandtab softtabstop=4:
 
 
-
-
 # class ARCSpawner(UserEnvMixin, BatchSpawnerRegexStates):
 class ARCSpawner(BatchSpawnerRegexStates):
     # TODO: new key on every connection
@@ -1035,12 +1029,14 @@ class ARCSpawner(BatchSpawnerRegexStates):
         env = ""
         for key, value in self.get_env().items():
             # FIXME: Not working with fullnameOverride config
-            value = value.replace("http://hub:8081/hub", "https://platform-noir.dev.ctaodc.ch/hub")
-            #if key in ["JUPYTERHUB_SERVICE_PREFIX", "JUPYTERHUB_SERVICE_URL"]:
+            value = value.replace(
+                "http://hub:8081/hub", "https://platform-noir.dev.ctaodc.ch/hub"
+            )
+            # if key in ["JUPYTERHUB_SERVICE_PREFIX", "JUPYTERHUB_SERVICE_URL"]:
             #    value = value.replace("/user", "/hub/user")
             env += '("{}" ^@{}@)\n'.format(key, value)
         return env
-    
+
     def get_env(self):
         env = super().get_env()
 
@@ -1058,8 +1054,12 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
     @property
     def batch_script(self):
-        dcache_base_url = os.getenv('CTADS_UPSTREAM_ENDPOINT', 'https://dcache.cta.cscs.ch:2880/').strip('/')
-        dcache_lst_sif = os.getenv('CTADS_LST_SIF', 'lst/software/jh-lst.sif').strip('/')
+        dcache_base_url = os.getenv(
+            "CTADS_UPSTREAM_ENDPOINT", "https://dcache.cta.cscs.ch:2880/"
+        ).strip("/")
+        dcache_lst_sif = os.getenv("CTADS_LST_SIF", "lst/software/jh-lst.sif").strip(
+            "/"
+        )
         return f"""&
                 ( jobname = "session" )
                 ( executable = "/usr/bin/bash" )( arguments = "run.sh" )
@@ -1091,7 +1091,6 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
                 ( join = "yes" ) 
                 ( gmlog = "gmlog" ) """
-
 
     http_timeout = Integer(1200, config=True, help="Timeout for HTTP requests")
     start_timeout = Integer(300, config=True)
@@ -1149,82 +1148,114 @@ class ARCSpawner(BatchSpawnerRegexStates):
         try:
             for output_line in output.splitlines():
                 self.log.info("output_line: %s", output_line)
-                if output_line.startswith('Job submitted with jobid:'):
+                if output_line.startswith("Job submitted with jobid:"):
                     id = output_line.split()[-1]
         except Exception as e:
             self.log.error("ARCSpawner unable to parse job ID from text: " + output)
             raise e
         return id
 
-    
     @property
     def job_state(self):
         if self.job_status:
             if r := re.search(r"State: (.*)", self.job_status):
                 return r.group(1)
-            
 
     def state_ispending(self):
         # Parse results of batch_query_cmd
         # Output determined by results of self.batch_query_cmd
         # self.log.debug("\033[31mchecking pending from job_status: " + str(self.job_status) + "\033[0m")
-        r = self.job_status is None or self.job_state in ["Accepted", "Submitted", "Queuing", "Preparing"]
-        self.log.info("\033[31mstate_ispending, job state: %s pending is %s\033[0m", self.job_state, r)
+        r = self.job_status is None or self.job_state in [
+            "Accepted",
+            "Submitted",
+            "Queuing",
+            "Preparing",
+        ]
+        self.log.info(
+            "\033[31mstate_ispending, job state: %s pending is %s\033[0m",
+            self.job_state,
+            r,
+        )
         return r
-        
+
     def state_isrunning(self):
         # Parse results of batch_query_cmd
         # Output determined by results of self.batch_query_cmd
         r = self.job_state in ["Running"]
-        self.log.info("\033[31mstate_isrunning, job state: %s running is %s\033[0m", self.job_state, r)
+        self.log.info(
+            "\033[31mstate_isrunning, job state: %s running is %s\033[0m",
+            self.job_state,
+            r,
+        )
         return r
-    
+
     def state_isready(self):
         if self.job_state not in ["Running"]:
             self.log.info("job state is not Running: not ready")
             return False
-        
-        if not getattr(self, 'have_tunnel', False):
+
+        if not getattr(self, "have_tunnel", False):
             self.log.info("no tunnel: not ready")
             return False
 
-        if not hasattr(self, 'host_ip'):
+        if not hasattr(self, "host_ip"):
             self.log.info("no host_ip: not ready")
             return False
-        
-        #if not hasattr(self, 'ssh_tunnel_connection'):
+
+        # if not hasattr(self, 'ssh_tunnel_connection'):
         #    self.log.info("no remote ssh tunnel connection: not ready")
         #    return False
-        
+
         self.log.info("job is ready")
         return True
-    
+
     forward_gateway = Unicode(
         "cgw.dev.ctaodc.ch",
         help="Host used for SSH tunneling",
     ).tag(config=True)
 
     async def make_ssh_tunnel(self):
-        self.log.info("\033[32mtrying to establish ssh tunnel to %s\033[0m", self.forward_gateway, self.port)
-        if hasattr(self, 'ssh_tunnel_connection'):
-            self.log.info("ssh tunnel already established: %s", self.ssh_tunnel_connection)
+        self.log.info(
+            "\033[32mtrying to establish ssh tunnel to %s\033[0m",
+            self.forward_gateway,
+            self.port,
+        )
+        if hasattr(self, "ssh_tunnel_connection"):
+            self.log.info(
+                "ssh tunnel already established: %s", self.ssh_tunnel_connection
+            )
         else:
-            self.log.info("\033[32mestablishing ssh tunnel to %s\033[0m", self.forward_gateway, self.port)
-            async with asyncssh.connect(self.forward_gateway,
-                                        # known_hosts="/etc/ssh_gw_known_hosts",
-                                        known_hosts=None,
-                                        client_keys=[
-                                            "/etc/forwardkey"
-                                            # (asyncssh.read_private_key("/etc/forwardkey"),
-                                            # asyncssh.read_certificate("/etc/forwardkey.pub"))
-                                            ],
-                                        username="forwarder"
-                                        ) as conn:
+            self.log.info(
+                "\033[32mestablishing ssh tunnel to %s\033[0m",
+                self.forward_gateway,
+                self.port,
+            )
+            async with asyncssh.connect(
+                self.forward_gateway,
+                # known_hosts="/etc/ssh_gw_known_hosts",
+                known_hosts=None,
+                client_keys=[
+                    "/etc/forwardkey"
+                    # (asyncssh.read_private_key("/etc/forwardkey"),
+                    # asyncssh.read_certificate("/etc/forwardkey.pub"))
+                ],
+                username="forwarder",
+            ) as conn:
                 self.ssh_tunnel_connection = conn
-                self.log.info("SSH connection established: %s will make forward to %s", conn, self.port)
-                listener = await conn.forward_local_port('0.0.0.0', self.port, '0.0.0.0', self.port)
-                #listener = await conn.forward_local_port('127.0.0.1', self.port, '127.0.0.1', self.port)
-                self.log.info("\033[31mListening %s on port %s\033[0m", listener, listener.get_port())
+                self.log.info(
+                    "SSH connection established: %s will make forward to %s",
+                    conn,
+                    self.port,
+                )
+                listener = await conn.forward_local_port(
+                    "0.0.0.0", self.port, "0.0.0.0", self.port
+                )
+                # listener = await conn.forward_local_port('127.0.0.1', self.port, '127.0.0.1', self.port)
+                self.log.info(
+                    "\033[31mListening %s on port %s\033[0m",
+                    listener,
+                    listener.get_port(),
+                )
                 await listener.wait_closed()
                 # self.log.info("SSH connection closed: %s", conn)
                 # del self.ssh_tunnel_connection
@@ -1235,11 +1266,14 @@ class ARCSpawner(BatchSpawnerRegexStates):
         #     sys.exit('SSH connection failed: ' + str(exc))
 
     def state_gethost(self):
-        if (r := re.search(r'JPORT=(\d{4,5})', self.job_log)) is not None:
+        if (r := re.search(r"JPORT=(\d{4,5})", self.job_log)) is not None:
             self.anticipated_port = int(r.group(1))
             self.log.info("found anticipated port: %s", self.anticipated_port)
 
-        r = re.search(r"inet (\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})/\d+? scope global hsn0", self.job_log)
+        r = re.search(
+            r"inet (\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})/\d+? scope global hsn0",
+            self.job_log,
+        )
         if r is not None:
             self.host_ip = r.group(1)
 
@@ -1247,20 +1281,25 @@ class ARCSpawner(BatchSpawnerRegexStates):
             self.log.info("found sleep command in job log")
             self.have_tunnel = True
 
-        server_details = re.search(r"http://127.0.0.1:(?P<port>\d{4})/.*?/lab(?:\?token=(?P<token>[0-9a-z]*))?", self.job_log)
+        server_details = re.search(
+            r"http://127.0.0.1:(?P<port>\d{4})/.*?/lab(?:\?token=(?P<token>[0-9a-z]*))?",
+            self.job_log,
+        )
 
         if server_details is None:
-            self.log.info("no server record found in '\033[33m%s\033[0m", "\n".join(self.job_log.split("\n")[-30:]))
+            self.log.info(
+                "no server record found in '\033[33m%s\033[0m",
+                "\n".join(self.job_log.split("\n")[-30:]),
+            )
             return None
         else:
-            self.port = int(server_details.group('port'))
-            self.server_token = server_details.group('token')
+            self.port = int(server_details.group("port"))
+            self.server_token = server_details.group("token")
 
             self.log.info("found server token: %s", self.server_token)
 
             # return self.forward_gateway
             return "127.0.0.1"
-
 
     @default("req_homedir")
     def _req_homedir_default(self):
@@ -1297,25 +1336,40 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 if self.state_isready():
                     await yield_(
                         {
-                            "message": (
-                                "Cluster job started... waiting to connect"
-                            ),
+                            "message": ("Cluster job started... waiting to connect"),
                         }
                     )
                     return
-                else:                
+                else:
                     await yield_(
                         {
                             "message": (
                                 "Cluster job running... waiting to see signs of life;"
-                                " host " + (' ASSIGNED' if hasattr(self, 'host_ip') else ' NOT assigned') + " "
-                                #f" host {getattr(self, 'host_ip', 'unknown')}"
-                                " tunnel" + (' READY' if getattr(self, 'have_tunnel', False) else ' NOT ready') + " "
-                                " tunnel port" + (' PLANNED' if hasattr(self, 'anticipated_port') else ' NOT planned yet')
+                                " host "
+                                + (
+                                    " ASSIGNED"
+                                    if hasattr(self, "host_ip")
+                                    else " NOT assigned"
+                                )
+                                + " "
+                                # f" host {getattr(self, 'host_ip', 'unknown')}"
+                                " tunnel"
+                                + (
+                                    " READY"
+                                    if getattr(self, "have_tunnel", False)
+                                    else " NOT ready"
+                                )
+                                + " "
+                                " tunnel port"
+                                + (
+                                    " PLANNED"
+                                    if hasattr(self, "anticipated_port")
+                                    else " NOT planned yet"
+                                )
                             ),
                         }
                     )
-            
+
             else:
                 await yield_(
                     {
@@ -1324,11 +1378,11 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 )
             await gen.sleep(1)
 
-    async def start(self):   
+    async def start(self):
         """Start the process"""
 
         self.ip = self.traits()["ip"].default_value
-        #self.port = self.traits()["port"].default_value
+        # self.port = self.traits()["port"].default_value
 
         self.port = random.randint(8700, 8999)
 
@@ -1336,9 +1390,9 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
         if self.server:
             self.server.port = self.port
-                        
+
         self.log.info("\033[31mwill create tunnel task\033[0m")
-        #await self.make_ssh_tunnel()
+        # await self.make_ssh_tunnel()
         self.ssh_tunnel_task = asyncio.create_task(self.make_ssh_tunnel())
         self.log.info("\033[31mcreated tunnel task %s\033[0m", self.ssh_tunnel_task)
 
@@ -1357,7 +1411,9 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
             status = await self.query_job_status()
             if status == JobStatus.RUNNING:
-                self.log.info("\033[33mBREAKING loop before running job since it's running\033[0m")
+                self.log.info(
+                    "\033[33mBREAKING loop before running job since it's running\033[0m"
+                )
                 break
             elif status == JobStatus.PENDING:
                 self.log.debug("Job " + self.job_id + " still pending")
@@ -1378,7 +1434,6 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 )
             await gen.sleep(self.startup_poll_interval)
 
-
         while True:
             self.log.info("\033[31mloop for running job\033[0m")
             await self.query_job_log()
@@ -1388,24 +1443,28 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 if self.port != self.traits()["port"].default_value:
                     self.log.info(f"found ip {self.ip} and port {self.port} in log")
 
-                    if hasattr(self, 'anticipated_port'):
-                        self.log.info("\033[31mfound anticipated port: %s, will make remote ssh tunnel\033[0m", self.anticipated_port)
+                    if hasattr(self, "anticipated_port"):
+                        self.log.info(
+                            "\033[31mfound anticipated port: %s, will make remote ssh tunnel\033[0m",
+                            self.anticipated_port,
+                        )
                         break
                     else:
-                        self.log.info("\033[31mno anticipated port yet, can not make remote tunnel\033[0m")
+                        self.log.info(
+                            "\033[31mno anticipated port yet, can not make remote tunnel\033[0m"
+                        )
             except Exception as e:
                 self.log.warn(f"failed to get ip: {e}")
             else:
-                self.log.info("no ip in log yet")                
+                self.log.info("no ip in log yet")
 
             await gen.sleep(self.startup_poll_interval)
 
-        
-        #self.ip = "127.0.0.1" #self.state_gethost()
-        self.ip = "148.187.151.63" #self.state_gethost()
+        # self.ip = "127.0.0.1" #self.state_gethost()
+        self.ip = "148.187.151.63"  # self.state_gethost()
         self.port = self.anticipated_port
         self.server.port = self.anticipated_port
-        
+
         while self.port == 0:
             await gen.sleep(self.startup_poll_interval)
             # Test framework: For testing, mock_port is set because we
@@ -1421,11 +1480,11 @@ class ARCSpawner(BatchSpawnerRegexStates):
         )
 
         return self.ip, self.port
-        #url = f"http://{self.ip}:{self.port}/lab?token={self.server_token}"
+        # url = f"http://{self.ip}:{self.port}/lab?token={self.server_token}"
 
-        #self.log.info("Spawner started job with full URL: " + url)
+        # self.log.info("Spawner started job with full URL: " + url)
 
-        #return url
+        # return url
 
     async def cancel_batch_job(self):
         await super().cancel_batch_job()
