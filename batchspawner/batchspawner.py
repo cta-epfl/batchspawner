@@ -1023,8 +1023,6 @@ set -eu
 
 
 
-
-
 # class ARCSpawner(UserEnvMixin, BatchSpawnerRegexStates):
 class ARCSpawner(BatchSpawnerRegexStates):
     # TODO: new key on every connection
@@ -1061,7 +1059,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
     @property
     def batch_script(self):
         dcache_base_url = os.getenv('CTADS_UPSTREAM_ENDPOINT', 'https://dcache.cta.cscs.ch:2880/').strip('/')
-        dcache_LST_SIF = os.getenv('CTADS_LST_SIF', 'lst/software/jh-lst.sif').strip('/')
+        dcache_lst_sif = os.getenv('CTADS_LST_SIF', 'lst/software/jh-lst.sif').strip('/')
         return f"""&
                 ( jobname = "session" )
                 ( executable = "/usr/bin/bash" )( arguments = "run.sh" )
@@ -1071,7 +1069,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 ( inputfiles = 
                     ("run.sh" "/etc/run.sh")
                     ("fkdata" "/etc/forwardkey")
-                    ("image.sif" "{dcache_base_url}/{dcache_LST_SIF}") 
+                    ("image.sif" "{dcache_base_url}/{dcache_lst_sif}") 
                 )
                     (cpuTime="60")
                     (wallTime="60")
@@ -1094,30 +1092,6 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 ( join = "yes" ) 
                 ( gmlog = "gmlog" ) """
 
-               
-# """
-# #!/bin/bash
-# #SBATCH --output={{homedir}}/jupyterhub_slurmspawner_%j.log
-# #SBATCH --export={{keepvars}}
-# {% if partition  %}#SBATCH --partition={{partition}}
-# {% endif %}{% if runtime    %}#SBATCH --time={{runtime}}
-# {% endif %}{% if memory     %}#SBATCH --mem={{memory}}
-# {% endif %}{% if gres       %}#SBATCH --gres={{gres}}
-# {% endif %}{% if nprocs     %}#SBATCH --cpus-per-task={{nprocs}}
-# {% endif %}{% if reservation%}#SBATCH --reservation={{reservation}}
-# {% endif %}{% if options    %}#SBATCH {{options}}{% endif %}
-
-# set -euo pipefail
-
-# trap 'echo SIGTERM received' TERM
-# {{prologue}}
-
-# which jupyterhub-singleuser
-
-# {% if srun %}{{srun}} {% endif %}{{cmd}}
-# echo "jupyterhub-singleuser ended gracefully"
-# {{epilogue}}
-# """
 
     http_timeout = Integer(1200, config=True, help="Timeout for HTTP requests")
     start_timeout = Integer(300, config=True)
@@ -1272,7 +1246,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         if re.search("Sending command: sleep 3600", self.job_log):
             self.log.info("found sleep command in job log")
             self.have_tunnel = True
-            
+
         server_details = re.search(r"http://127.0.0.1:(?P<port>\d{4})/.*?/lab(?:\?token=(?P<token>[0-9a-z]*))?", self.job_log)
 
         if server_details is None:
@@ -1286,9 +1260,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
             # return self.forward_gateway
             return "127.0.0.1"
-        
-        
-    
+
 
     @default("req_homedir")
     def _req_homedir_default(self):
@@ -1296,7 +1268,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
     async def query_job_log(self):
         """Check job status, return JobStatus object."""
-               
+
         cmd = f"arccat {self.job_id}"
 
         self.log.info("Spawner querying job: " + cmd)
@@ -1326,7 +1298,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
                     await yield_(
                         {
                             "message": (
-                                f"Cluster job started... waiting to connect"
+                                "Cluster job started... waiting to connect"
                             ),
                         }
                     )
@@ -1335,7 +1307,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
                     await yield_(
                         {
                             "message": (
-                                f"Cluster job running... waiting to see signs of life;"
+                                "Cluster job running... waiting to see signs of life;"
                                 " host " + (' ASSIGNED' if hasattr(self, 'host_ip') else ' NOT assigned') + " "
                                 #f" host {getattr(self, 'host_ip', 'unknown')}"
                                 " tunnel" + (' READY' if getattr(self, 'have_tunnel', False) else ' NOT ready') + " "
@@ -1375,7 +1347,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         # We are called with a timeout, and if the timeout expires this function will
         # be interrupted at the next yield, and self.stop() will be called.
         # So this function should not return unless successful, and if unsuccessful
-        # should either raise and Exception or loop forever.
+        # should either raise an Exception or loop forever.
         if len(self.job_id) == 0:
             raise RuntimeError(
                 "Jupyter batch job submission failure (no jobid in output)"
