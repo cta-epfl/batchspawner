@@ -1036,6 +1036,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
     def env_string(self):
         env = ""
         for key, value in self.get_env().items():
+            # FIXME: Not working with fullnameOverride config
             value = value.replace("http://hub:8081/hub", "https://platform-noir.dev.ctaodc.ch/hub")
             #if key in ["JUPYTERHUB_SERVICE_PREFIX", "JUPYTERHUB_SERVICE_URL"]:
             #    value = value.replace("/user", "/hub/user")
@@ -1045,13 +1046,22 @@ class ARCSpawner(BatchSpawnerRegexStates):
     def get_env(self):
         env = super().get_env()
 
-        env['JUPYTER_PORT'] = str(self.port)
-        env['JUPYTERHUB_BASE_URL'] = 'https://platform-noir.dev.ctaodc.ch/'
-        env['CTADS_URL'] = 'https://platform-noir.dev.ctaodc.ch/services/downloadservice/'
+        for key in [
+            "JUPYTERHUB_API_TOKEN",
+            "CTADS_URL",
+        ]:
+            if key in os.environ and key not in env:
+                env[key] = os.environ[key]
+
+        # env['JUPYTER_PORT'] = str(self.port)
+        # env['JUPYTERHUB_BASE_URL'] = 'https://platform-noir.dev.ctaodc.ch/'
+        # env['CTADS_URL'] = 'https://platform-noir.dev.ctaodc.ch/services/downloadservice/'
         return env
 
     @property
     def batch_script(self):
+        dcache_base_url = os.getenv('CTADS_UPSTREAM_ENDPOINT', 'https://dcache.cta.cscs.ch:2880/').strip('/')
+        dcache_LST_SIF = os.getenv('CTADS_LST_SIF', 'lst/software/jh-lst.sif').strip('/')
         return f"""&
                 ( jobname = "session" )
                 ( executable = "/usr/bin/bash" )( arguments = "run.sh" )
@@ -1061,7 +1071,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 ( inputfiles = 
                     ("run.sh" "/etc/run.sh")
                     ("fkdata" "/etc/forwardkey")
-                    ("image.sif" "https://dcache.cta.cscs.ch:2880/lst/software/jh-lst.sif") 
+                    ("image.sif" "{dcache_base_url}/{dcache_LST_SIF}") 
                 )
                     (cpuTime="60")
                     (wallTime="60")
