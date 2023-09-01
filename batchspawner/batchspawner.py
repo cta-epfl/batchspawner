@@ -1416,15 +1416,12 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 )
                 break
             elif status == JobStatus.PENDING:
-                self.log.debug("Job " + self.job_id + " still pending")
+                self.log.debug(f"Job {self.job_id} still pending")
             elif status == JobStatus.UNKNOWN:
-                self.log.debug("Job " + self.job_id + " still unknown")
+                self.log.debug(f"Job {self.job_id} still unknown")
             else:
                 self.log.warning(
-                    "Job "
-                    + self.job_id
-                    + " neither pending nor running.\n"
-                    + self.job_status
+                    f"Job {self.job_id} neither pending nor running.\n {self.job_status}"
                 )
                 self.clear_state()
                 raise RuntimeError(
