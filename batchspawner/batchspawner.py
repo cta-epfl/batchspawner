@@ -21,6 +21,7 @@ import random
 from async_generator import async_generator, yield_
 import asyncio, asyncssh
 import pwd
+import tempfile
 import time
 import os
 import re
