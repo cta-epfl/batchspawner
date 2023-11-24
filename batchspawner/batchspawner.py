@@ -1027,28 +1027,40 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
     # TODO: user dir persistence
 
-    cert_dir = None
+    cert_dir_context = None
+    cert_dir_path = None
+    certificate_filename = "certificate.crt"
+    cabundle_filename = "cabundle.pem"
 
-    def __init__(self, *args,**kwargs):
+    def __init__(self, *args, **kwargs):
         super(BatchSpawnerRegexStates, self).__init__(*args, **kwargs)
-        self.cert_dir = tempfile.TemporaryDirectory()
+        self.cert_dir_context = tempfile.TemporaryDirectory()
+        self.cert_dir_path = self.cert_dir_context.__enter__()
 
-        # TODO: fetch certificate
-
-        service_token = os.environ['']
+        service_token = os.environ[""]
         r = requests.get(
-            urljoin(os.environ['CTACS_URL'], 'certificate'),
-            params={'service-token': service_token, 'user': self.user.name})
+            urljoin(os.environ["CTACS_URL"], "certificate"),
+            params={"service-token": service_token, "user": self.user.name},
+        )
 
         if r.status_code != 200:
-            self.log.error(
-                'Error while retrieving certificate : %s', r.content)
-            raise Exception(
-                f"Error while retrieving certificate: {r.text}")
+            self.log.error("Error while retrieving certificate : %s", r.content)
+            raise Exception(f"Error while retrieving certificate: {r.text}")
+        else:
+            cert_file = os.path.join(tmpdir, self.certificate_filename)
+            cabundle_file = os.path.join(tmpdir, self.cabundle_filename)
 
+            with open(cert_file, "w") as f:
+                f.write(r.json().get("certificate"))
+            os.chmod(cert_file, stat.S_IRUSR)
+
+            with open(cabundle_file, "w") as f:
+                f.write(r.json().get("cabundle"))
+            os.chmod(cabundle_file, stat.S_IRUSR)
 
     def __del__(self):
-        self.cert_dir.cleanup()
+        self.cert_dir_path = None
+        self.cert_dir_context.cleanup()
 
     @property
     def jh_base_url(self):
@@ -1075,18 +1087,9 @@ class ARCSpawner(BatchSpawnerRegexStates):
         env["JUPYTER_PORT"] = str(self.port)
         env["JUPYTERHUB_BASE_URL"] = self.jh_base_url
         env["CTADS_URL"] = self.jh_base_url + "/services/downloadservice/"
-        env["X509_USER_PROXY"] = os.environ.get(
-            "X509_USER_PROXY", "/downloadservice-data/dcache_clientcert.crt"
+        env["X509_USER_PROXY"] = os.path.join(
+            self.cert_dir_path, self.certificate_filename
         )
-
-        if self.user.name:
-            filename = self.user_to_path_fragment(self.user.name) + ".crt"
-            own_certificate_file = os.path.join(
-                os.environ["CTADS_CERTIFICATE_DIR"], filename
-            )
-
-            if os.path.isfile(own_certificate_file):
-                env["X509_USER_PROXY"] = own_certificate_file
 
         return env
 
@@ -1234,12 +1237,15 @@ class ARCSpawner(BatchSpawnerRegexStates):
             raise e
         return id
 
-
     async def get_arcinfo(self):
         arcinfo = subprocess.check_output(["arcinfo", "-l"]).strip()
         self.arcinfo = dict(
-            free_slots=int(re.search(r"Free slots: ([0-9]*)", arcinfo.decode()).group(1)),
-            total_slots=int(re.search(r"Total slots: ([0-9]*)", arcinfo.decode()).group(1)),
+            free_slots=int(
+                re.search(r"Free slots: ([0-9]*)", arcinfo.decode()).group(1)
+            ),
+            total_slots=int(
+                re.search(r"Total slots: ([0-9]*)", arcinfo.decode()).group(1)
+            ),
         )
 
     async def proxy_info(self):
@@ -1256,7 +1262,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
             self.proxy_vomsACvalidityLeft = None
 
     # arcinfo  -l
-    
+
     @property
     def job_state(self):
         if self.job_status:
@@ -1490,9 +1496,9 @@ class ARCSpawner(BatchSpawnerRegexStates):
         if self.proxy_vomsACvalidityLeft is None:
             raise RuntimeError(
                 "No valid credentials to connect to ARC, aborting. Please contact support if you need it urgently."
-            )        
+            )
 
-        self.log.info("proxy validity: %s", self.proxy_vomsACvalidityLeft)        
+        self.log.info("proxy validity: %s", self.proxy_vomsACvalidityLeft)
 
         self.ip = self.traits()["ip"].default_value
         # self.port = self.traits()["port"].default_value
@@ -1612,5 +1618,5 @@ class ARCSpawner(BatchSpawnerRegexStates):
         )
         self.log.info("Cancelling job " + self.job_id + ": " + cmd)
         await self.run_command(cmd)
-        if (self.ssh_tunnel_task):
+        if self.ssh_tunnel_task:
             self.ssh_tunnel_task.cancel()
