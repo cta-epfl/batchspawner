@@ -18,15 +18,16 @@ Common attributes of batch submission / resource manager environments will inclu
 """
 import asyncio
 import random
+import requests
 import subprocess
 import tempfile
-from textwrap import dedent
 from async_generator import async_generator, yield_
 import asyncio, asyncssh, sys
 import pwd
 import time
 import os
 import re
+from urllib.parse import urljoin
 
 import xml.etree.ElementTree as ET
 
@@ -438,7 +439,7 @@ class BatchSpawnerBase(Spawner):
         if self.server:
             self.server.port = self.port
 
-        job = await self.submit_batch_script()
+        job_id = await self.submit_batch_script()
 
         # We are called with a timeout, and if the timeout expires this function will
         # be interrupted at the next yield, and self.stop() will be called.
@@ -1025,8 +1026,29 @@ class ARCSpawner(BatchSpawnerRegexStates):
     # TODO: handle token
 
     # TODO: user dir persistence
-    # TODO: image selection
-    # TODO: different certs for different users
+
+    cert_dir = None
+
+    def __init__(self, *args,**kwargs):
+        super(BatchSpawnerRegexStates, self).__init__(*args, **kwargs)
+        self.cert_dir = tempfile.TemporaryDirectory()
+
+        # TODO: fetch certificate
+
+        service_token = os.environ['']
+        r = requests.get(
+            urljoin(os.environ['CTACS_URL'], 'certificate'),
+            params={'service-token': service_token, 'user': self.user.name})
+
+        if r.status_code != 200:
+            self.log.error(
+                'Error while retrieving certificate : %s', r.content)
+            raise Exception(
+                f"Error while retrieving certificate: {r.text}")
+
+
+    def __del__(self):
+        self.cert_dir.cleanup()
 
     @property
     def jh_base_url(self):
