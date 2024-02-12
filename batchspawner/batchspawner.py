@@ -1394,6 +1394,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         try:
             self.job_log = await self.run_command(cmd)
         except RuntimeError as e:
+            self.log.error("Error querying job " + self.job_id)
             # e.args[0] is stderr from the process
             self.job_log = e.args[0]
         except Exception as e:
@@ -1494,6 +1495,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         # So this function should not return unless successful, and if unsuccessful
         # should either raise and Exception or loop forever.
         if len(self.job_id) == 0:
+            self.log.error("\033[31mJupyter batch job submission failure (no jobid in output) %s\033[0m", self.ssh_tunnel_task)
             raise RuntimeError(
                 "Jupyter batch job submission failure (no jobid in output)"
             )
