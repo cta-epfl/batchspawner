@@ -282,6 +282,10 @@ async def run_spawner_script(
     out_list = list(out_list)
 
     class BatchDummyTestScript(spawner):
+        async def query_job_log(self):
+            """Check job status, return JobStatus object."""
+            return
+
         async def run_command(self, cmd, input=None, env=None):
             # Test the input
             run_re = cmd_expectlist.pop(0)
