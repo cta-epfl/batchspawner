@@ -31,6 +31,10 @@ class BatchDummy(BatchSpawnerRegexStates):
     cmd_expectlist = None
     out_expectlist = None
 
+    async def query_job_log(self):
+        """Check job status, return JobStatus object."""
+        return ""
+
     async def run_command(self, *args, **kwargs):
         """Overwriten run command to test templating and outputs"""
         cmd = args[0]
