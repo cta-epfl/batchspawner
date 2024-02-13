@@ -20,9 +20,8 @@ import asyncio
 import random
 import subprocess
 import tempfile
-from textwrap import dedent
 from async_generator import async_generator, yield_
-import asyncio, asyncssh, sys
+import asyncssh
 import pwd
 import time
 import os
