@@ -31,17 +31,17 @@ jobs:
         include:
           # test oldest supported version
           - python-version: "3.6"
-            pip-install-spec: "jupyterhub==1.5.1 sqlalchemy==1.*"
+            pip-install-spec: "jupyterhub==1.5.1 sqlalchemy==1.* asyncssh==2.14.2"
             runs-on: ubuntu-20.04 # python 3.6 is only available in 20.04
 
           - python-version: "3.7"
-            pip-install-spec: "jupyterhub==2.* sqlalchemy==1.*"
+            pip-install-spec: "jupyterhub==2.* sqlalchemy==1.* asyncssh==2.14.2"
           - python-version: "3.8"
-            pip-install-spec: "jupyterhub==3.*"
+            pip-install-spec: "jupyterhub==3.* asyncssh==2.14.2"
           - python-version: "3.10"
-            pip-install-spec: "jupyterhub==4.*"
+            pip-install-spec: "jupyterhub==4.* asyncssh==2.14.2"
           - python-version: "3.11"
-            pip-install-spec: "jupyterhub==4.*"
+            pip-install-spec: "jupyterhub==4.* asyncssh==2.14.2"
 
           # test unreleased jupyterhub, failures tolerated
           - python-version: "3.X"

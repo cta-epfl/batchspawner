@@ -37,7 +37,7 @@ setup(
     install_require={
         "jinja2",
         "jupyterhub>=1.5.1",
-        "asyncssh>=2.23.2",
+        "asyncssh==2.14.2",
     },
     extras_require={
         "test": [
