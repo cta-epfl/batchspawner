@@ -342,21 +342,21 @@ async def test_torque(db, event_loop):
         re.compile(r"^#PBS some_option_asdf", re.M),
     ]
     script = [
-        (re.compile(r"sudo.*qsub"), str(testjob)),
+        (re.compile(r".*qsub"), str(testjob)),
         (
-            re.compile(r"sudo.*qstat"),
+            re.compile(r".*qstat"),
             "<job_state>Q</job_state><exec_host></exec_host>",
         ),  # pending
         (
-            re.compile(r"sudo.*qstat"),
+            re.compile(r".*qstat"),
             f"<job_state>R</job_state><exec_host>{testhost}/1</exec_host>",
         ),  # running
         (
-            re.compile(r"sudo.*qstat"),
+            re.compile(r".*qstat"),
             f"<job_state>R</job_state><exec_host>{testhost}/1</exec_host>",
         ),  # running
-        (re.compile(r"sudo.*qdel"), "STOP"),
-        (re.compile(r"sudo.*qstat"), ""),
+        (re.compile(r".*qdel"), "STOP"),
+        (re.compile(r".*qstat"), ""),
     ]
     from .. import TorqueSpawner
 
@@ -387,18 +387,18 @@ async def test_moab(db, event_loop):
         re.compile(r"^#PBS some_option_asdf", re.M),
     ]
     script = [
-        (re.compile(r"sudo.*msub"), str(testjob)),
-        (re.compile(r"sudo.*mdiag"), 'State="Idle"'),  # pending
+        (re.compile(r".*msub"), str(testjob)),
+        (re.compile(r".*mdiag"), 'State="Idle"'),  # pending
         (
-            re.compile(r"sudo.*mdiag"),
+            re.compile(r".*mdiag"),
             f'State="Running" AllocNodeList="{testhost}"',
         ),  # running
         (
-            re.compile(r"sudo.*mdiag"),
+            re.compile(r".*mdiag"),
             f'State="Running" AllocNodeList="{testhost}"',
         ),  # running
-        (re.compile(r"sudo.*mjobctl.*-c"), "STOP"),
-        (re.compile(r"sudo.*mdiag"), ""),
+        (re.compile(r".*mjobctl.*-c"), "STOP"),
+        (re.compile(r".*mdiag"), ""),
     ]
     from .. import MoabSpawner
 
@@ -429,18 +429,18 @@ async def test_pbs(db, event_loop):
         re.compile(r"^#PBS some_option_asdf", re.M),
     ]
     script = [
-        (re.compile(r"sudo.*qsub"), str(testjob)),
-        (re.compile(r"sudo.*qstat"), "job_state = Q"),  # pending
+        (re.compile(r".*qsub"), str(testjob)),
+        (re.compile(r".*qstat"), "job_state = Q"),  # pending
         (
-            re.compile(r"sudo.*qstat"),
+            re.compile(r".*qstat"),
             f"job_state = R\nexec_host = {testhost}/2*1",
         ),  # running
         (
-            re.compile(r"sudo.*qstat"),
+            re.compile(r".*qstat"),
             f"job_state = R\nexec_host = {testhost}/2*1",
         ),  # running
-        (re.compile(r"sudo.*qdel"), "STOP"),
-        (re.compile(r"sudo.*qstat"), ""),
+        (re.compile(r".*qdel"), "STOP"),
+        (re.compile(r".*qstat"), ""),
     ]
     from .. import PBSSpawner
 
@@ -488,16 +488,16 @@ async def test_slurm(db, event_loop):
 # We tend to use slurm as our typical example job.  These allow quick
 # Slurm examples.
 normal_slurm_script = [
-    (re.compile(r"sudo.*sbatch"), str(testjob)),
-    (re.compile(r"sudo.*squeue"), "PENDING "),  # pending
+    (re.compile(r".*sbatch"), str(testjob)),
+    (re.compile(r".*squeue"), "PENDING "),  # pending
     (
-        re.compile(r"sudo.*squeue"),
+        re.compile(r".*squeue"),
         "slurm_load_jobs error: Unable to contact slurm controller",
     ),  # unknown
-    (re.compile(r"sudo.*squeue"), "RUNNING " + testhost),  # running
-    (re.compile(r"sudo.*squeue"), "RUNNING " + testhost),
-    (re.compile(r"sudo.*scancel"), "STOP"),
-    (re.compile(r"sudo.*squeue"), ""),
+    (re.compile(r".*squeue"), "RUNNING " + testhost),  # running
+    (re.compile(r".*squeue"), "RUNNING " + testhost),
+    (re.compile(r".*scancel"), "STOP"),
+    (re.compile(r".*squeue"), ""),
 ]
 from .. import SlurmSpawner
 
@@ -532,12 +532,12 @@ async def run_typical_slurm_spawner(
 #        re.compile(r'#$\s+some_option_asdf'),
 #        ]
 #    script = [
-#        (re.compile(r'sudo.*qsub'),   'x x '+str(testjob)),
-#        (re.compile(r'sudo.*qstat'),   'PENDING '),
-#        (re.compile(r'sudo.*qstat'),   'RUNNING '+testhost),
-#        (re.compile(r'sudo.*qstat'),   'RUNNING '+testhost),
-#        (re.compile(r'sudo.*qdel'),  'STOP'),
-#        (re.compile(r'sudo.*qstat'),   ''),
+#        (re.compile(r'.*qsub'),   'x x '+str(testjob)),
+#        (re.compile(r'.*qstat'),   'PENDING '),
+#        (re.compile(r'.*qstat'),   'RUNNING '+testhost),
+#        (re.compile(r'.*qstat'),   'RUNNING '+testhost),
+#        (re.compile(r'.*qdel'),  'STOP'),
+#        (re.compile(r'.*qstat'),   ''),
 #        ]
 #    from .. import GridengineSpawner
 #    await run_spawner_script(db, GridengineSpawner, script,
@@ -559,14 +559,14 @@ async def test_condor(db, event_loop):
     ]
     script = [
         (
-            re.compile(r"sudo.*condor_submit"),
+            re.compile(r".*condor_submit"),
             f"submitted to cluster {str(testjob)}",
         ),
-        (re.compile(r"sudo.*condor_q"), "1,"),  # pending
-        (re.compile(r"sudo.*condor_q"), f"2, @{testhost}"),  # runing
-        (re.compile(r"sudo.*condor_q"), f"2, @{testhost}"),
-        (re.compile(r"sudo.*condor_rm"), "STOP"),
-        (re.compile(r"sudo.*condor_q"), ""),
+        (re.compile(r".*condor_q"), "1,"),  # pending
+        (re.compile(r".*condor_q"), f"2, @{testhost}"),  # runing
+        (re.compile(r".*condor_q"), f"2, @{testhost}"),
+        (re.compile(r".*condor_rm"), "STOP"),
+        (re.compile(r".*condor_q"), ""),
     ]
     from .. import CondorSpawner
 
@@ -597,14 +597,14 @@ async def test_lfs(db, event_loop):
     ]
     script = [
         (
-            re.compile(r"sudo.*bsub"),
+            re.compile(r".*bsub"),
             f"Job <{str(testjob)}> is submitted to default queue <normal>",
         ),
-        (re.compile(r"sudo.*bjobs"), "PEND "),  # pending
-        (re.compile(r"sudo.*bjobs"), f"RUN {testhost}"),  # running
-        (re.compile(r"sudo.*bjobs"), f"RUN {testhost}"),
-        (re.compile(r"sudo.*bkill"), "STOP"),
-        (re.compile(r"sudo.*bjobs"), ""),
+        (re.compile(r".*bjobs"), "PEND "),  # pending
+        (re.compile(r".*bjobs"), f"RUN {testhost}"),  # running
+        (re.compile(r".*bjobs"), f"RUN {testhost}"),
+        (re.compile(r".*bkill"), "STOP"),
+        (re.compile(r".*bjobs"), ""),
     ]
     from .. import LsfSpawner
 
