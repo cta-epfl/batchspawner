@@ -1434,6 +1434,10 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 )
             await asyncio.sleep(1)
 
+    async def query_job_log(self):
+        """Check job status, return JobStatus object."""
+        return ""
+
     async def start(self):
         """Start the process"""
 
