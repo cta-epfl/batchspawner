@@ -470,6 +470,12 @@ class BatchSpawnerBase(Spawner):
                 if self.port != self.traits()["port"].default_value:
                     self.log.info(f"found ip {self.ip} and port {self.port} in log")
                     break
+
+                # Test framework: For testing, mock_port is set because we
+                # don't actually run the single-user server yet.
+                if hasattr(self, "mock_port"):
+                    self.port = self.mock_port
+                    break
             except Exception as e:
                 self.log.warn(f"failed to get ip: {e}")
             else:
