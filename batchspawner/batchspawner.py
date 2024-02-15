@@ -1004,7 +1004,6 @@ class ARCSpawner(BatchSpawnerRegexStates):
     # TODO: handle token
 
     # TODO: user dir persistence
-    # TODO: image selection
     # TODO: different certs for different users
 
     @property
