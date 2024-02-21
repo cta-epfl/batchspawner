@@ -332,7 +332,7 @@ class BatchSpawnerBase(Spawner):
         )
         self.log.debug("Spawner querying job: " + cmd)
         try:
-            self.job_status = await self.run_command(cmd)
+            self.job_status = await self.run_command(cmd, env=self.get_env())
         except RuntimeError as e:
             # e.args[0] is stderr from the process
             self.job_status = e.args[0]
@@ -364,7 +364,7 @@ class BatchSpawnerBase(Spawner):
             )
         )
         self.log.info("Cancelling job " + self.job_id + ": " + cmd)
-        await self.run_command(cmd)
+        await self.run_command(cmd, env=self.get_env())
 
     def load_state(self, state):
         """load job_id from state"""
@@ -1038,7 +1038,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         if self.user.name:
             filename = self.user_to_path_fragment(self.user.name) + ".crt"
             own_certificate_file = os.path.join(
-                os.environ["CTADS_CERTIFICATE_DIR"], filename
+                os.environ["CTACS_CERTIFICATE_DIR"], filename
             )
 
             if os.path.isfile(own_certificate_file):
@@ -1370,7 +1370,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
         self.log.info("Spawner querying job: " + cmd)
         try:
-            self.job_log = await self.run_command(cmd)
+            self.job_log = await self.run_command(cmd, env=self.get_env())
         except RuntimeError as e:
             self.log.error("Error querying job " + self.job_id)
             # e.args[0] is stderr from the process
@@ -1569,6 +1569,6 @@ class ARCSpawner(BatchSpawnerRegexStates):
             )
         )
         self.log.info("Cancelling job " + self.job_id + ": " + cmd)
-        await self.run_command(cmd)
+        await self.run_command(cmd, env=self.get_env())
         if (self.ssh_tunnel_task):
             self.ssh_tunnel_task.cancel()
