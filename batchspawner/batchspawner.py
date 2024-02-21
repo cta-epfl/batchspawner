@@ -1032,7 +1032,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         env["JUPYTERHUB_BASE_URL"] = self.jh_base_url
         env["CTADS_URL"] = self.jh_base_url + "/services/downloadservice/"
         env["X509_USER_PROXY"] = os.environ.get(
-            "X509_USER_PROXY", "/downloadservice-data/dcache_clientcert.crt"
+            "X509_USER_PROXY", "/certificateservice-data/dcache_clientcert.crt"
         )
 
         if self.user.name:
@@ -1202,7 +1202,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         cmd = "arcproxy -i vomsACvalidityLeft"
 
         try:
-            self.proxy_vomsACvalidityLeft = await self.run_command(cmd)
+            self.proxy_vomsACvalidityLeft = await self.run_command(cmd, env=self.get_env())
             self.proxy_vomsACvalidityLeft = int(self.proxy_vomsACvalidityLeft.strip())
         except RuntimeError as e:
             # e.args[0] is stderr from the process
