@@ -1192,7 +1192,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
 
     async def get_arcinfo(self):
-        arcinfo = subprocess.check_output(["arcinfo", "-l"]).strip()
+        arcinfo = subprocess.check_output(["arcinfo", "-l"], env=self.get_env()).strip()
         self.arcinfo = dict(
             free_slots=int(re.search(r"Free slots: ([0-9]*)", arcinfo.decode()).group(1)),
             total_slots=int(re.search(r"Total slots: ([0-9]*)", arcinfo.decode()).group(1)),
