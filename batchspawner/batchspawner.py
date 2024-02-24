@@ -1068,7 +1068,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 (* maximal time for the session directory to exist on the remote node, days *)
                     (lifeTime="14")
                 (* memory required for the job, per count, Mbytes *)
-                    (Memory="{int(self.req_memory / self.req_nprocs)}")
+                    (Memory="{int(float(self.req_memory) / float(self.req_nprocs))}")
                 (* disk space required for the job, Mbytes *)
                     (*Disk="100000"*)
 
