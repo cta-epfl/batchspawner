@@ -332,7 +332,7 @@ class BatchSpawnerBase(Spawner):
         )
         self.log.debug("Spawner querying job: " + cmd)
         try:
-            self.job_status = await self.run_command(cmd)
+            self.job_status = await self.run_command(cmd, env=self.get_env())
         except RuntimeError as e:
             # e.args[0] is stderr from the process
             self.job_status = e.args[0]
@@ -364,7 +364,7 @@ class BatchSpawnerBase(Spawner):
             )
         )
         self.log.info("Cancelling job " + self.job_id + ": " + cmd)
-        await self.run_command(cmd)
+        await self.run_command(cmd, env=self.get_env())
 
     def load_state(self, state):
         """load job_id from state"""
@@ -1032,13 +1032,13 @@ class ARCSpawner(BatchSpawnerRegexStates):
         env["JUPYTERHUB_BASE_URL"] = self.jh_base_url
         env["CTADS_URL"] = self.jh_base_url + "/services/downloadservice/"
         env["X509_USER_PROXY"] = os.environ.get(
-            "X509_USER_PROXY", "/downloadservice-data/dcache_clientcert.crt"
+            "X509_USER_PROXY", "/certificateservice-data/dcache_clientcert.crt"
         )
 
         if self.user.name:
             filename = self.user_to_path_fragment(self.user.name) + "__arc.crt"
             own_certificate_file = os.path.join(
-                os.environ["CTADS_CERTIFICATE_DIR"], filename
+                os.environ["CTACS_CERTIFICATE_DIR"], filename
             )
 
             if os.path.isfile(own_certificate_file):
@@ -1068,11 +1068,11 @@ class ARCSpawner(BatchSpawnerRegexStates):
                 (* maximal time for the session directory to exist on the remote node, days *)
                     (lifeTime="14")
                 (* memory required for the job, per count, Mbytes *)
-                    (Memory="20000")
+                    (Memory="{self.req_memory}")
                 (* disk space required for the job, Mbytes *)
                     (*Disk="100000"*)
 
-                (priority="100")
+                (priority="1000")
 
                 (count="{int(self.req_nprocs)}") 
                 (countpernode="{int(self.req_nprocs)}") 
@@ -1192,7 +1192,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
 
     async def get_arcinfo(self):
-        arcinfo = subprocess.check_output(["arcinfo", "-l"]).strip()
+        arcinfo = subprocess.check_output(["arcinfo", "-l"], env=self.get_env()).strip()
         self.arcinfo = dict(
             free_slots=int(re.search(r"Free slots: ([0-9]*)", arcinfo.decode()).group(1)),
             total_slots=int(re.search(r"Total slots: ([0-9]*)", arcinfo.decode()).group(1)),
@@ -1202,7 +1202,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         cmd = "arcproxy -i vomsACvalidityLeft"
 
         try:
-            self.proxy_vomsACvalidityLeft = await self.run_command(cmd)
+            self.proxy_vomsACvalidityLeft = await self.run_command(cmd, env=self.get_env())
             self.proxy_vomsACvalidityLeft = int(self.proxy_vomsACvalidityLeft.strip())
         except RuntimeError as e:
             # e.args[0] is stderr from the process
@@ -1370,7 +1370,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
 
         self.log.info("Spawner querying job: " + cmd)
         try:
-            self.job_log = await self.run_command(cmd)
+            self.job_log = await self.run_command(cmd, env=self.get_env())
         except RuntimeError as e:
             self.log.error("Error querying job " + self.job_id)
             # e.args[0] is stderr from the process
@@ -1569,6 +1569,6 @@ class ARCSpawner(BatchSpawnerRegexStates):
             )
         )
         self.log.info("Cancelling job " + self.job_id + ": " + cmd)
-        await self.run_command(cmd)
+        await self.run_command(cmd, env=self.get_env())
         if (self.ssh_tunnel_task):
             self.ssh_tunnel_task.cancel()
