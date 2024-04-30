@@ -1036,7 +1036,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         )
 
         if self.user.name:
-            filename = self.user_to_path_fragment(self.user.name) + ".crt"
+            filename = self.user_to_path_fragment(self.user.name) + "__arc.crt"
             own_certificate_file = os.path.join(
                 os.environ["CTADS_CERTIFICATE_DIR"], filename
             )
