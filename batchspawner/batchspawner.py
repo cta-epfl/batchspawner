@@ -238,6 +238,8 @@ class BatchSpawnerBase(Spawner):
         )
         inbytes = None
 
+        self.log.info("Running command: %s produces process %s PID %s", cmd, proc, proc.pid)
+
         if input:
             inbytes = input.encode()
 
