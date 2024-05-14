@@ -1033,7 +1033,9 @@ class ARCSpawner(BatchSpawnerRegexStates):
     certificate_file = ""
     cabundle_file = ""
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        BatchSpawnerRegexStates.__init__(*args, **kwargs)
+
         self.tempdir = tempfile.TemporaryDirectory()
         token = os.getenv("JUPYTERHUB_API_TOKEN", "")
         if token is None:
