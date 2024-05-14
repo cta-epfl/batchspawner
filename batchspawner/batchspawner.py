@@ -35,6 +35,29 @@ from jupyterhub.spawner import Spawner, set_user_setuid
 from traitlets import Dict, Float, Integer, Unicode, default
 
 
+import requests
+import stat
+import logging
+logger = logging.getLogger(__name__)
+
+try:
+    from jupyterhub.services.auth import HubOAuth
+    auth = HubOAuth(
+        api_token=os.environ['JUPYTERHUB_API_TOKEN'], cache_max_age=60)
+except Exception:
+    logger.warning('Auth system not configured')
+    auth = None
+
+
+def urljoin_multipart(*args):
+    """Join multiple parts of a URL together, ignoring empty parts."""
+    logger.info('urljoin_multipart: %s', args)
+    return '/'.join(
+        [arg.strip('/')
+         for arg in args if arg is not None and arg.strip('/') != '']
+    )
+
+
 def format_template(template, *args, **kwargs):
     """Format a template, either using jinja2 or str.format().
 
@@ -1006,7 +1029,45 @@ class ARCSpawner(BatchSpawnerRegexStates):
     # TODO: handle token
 
     # TODO: user dir persistence
-    # TODO: different certs for different users
+
+    certificate_file = ""
+    cabundle_file = ""
+
+    def __init__(self, *args, **kwargs):
+        BatchSpawnerRegexStates.__init__(self, *args, **kwargs)
+
+        self.tempdir = tempfile.TemporaryDirectory()
+        token = os.getenv("JUPYTERHUB_API_TOKEN", "")
+        if token is None:
+            raise Exception("Missing JUPYTERHUB_API_TOKEN for ARCSpawner")
+
+        logger.info(f"New ARCSpawner for user :{self.user.name}")
+        r = requests.get(
+            urljoin_multipart(os.environ['CTACS_URL'], '/certificate'),
+            params={
+                'service-token': token,
+                'user': self.user.name,
+                'certificate_key': 'arc',
+            })
+
+        if r.status_code != 200:
+            logger.error(
+                f'Error while retrieving certificate : {r.content}')
+            raise Exception(
+                f"Error while retrieving certificate: {r.text}")
+
+        self.certificate_file = os.path.join(self.tempdir, 'certificate.crt')
+        self.cabundle_file = os.path.join(self.tempdir, 'cabundle')
+
+        with open(self.certificate_file, 'w') as f:
+            f.write(r.json().get('certificate'))
+        os.chmod(self.certificate_file, stat.S_IRUSR)
+        with open(self.cabundle_file, 'w') as f:
+            f.write(r.json().get('cabundle'))
+        os.chmod(self.cabundle_file, stat.S_IRUSR)
+
+    def __del__(self):
+        self.tempfolder.cleanup()
 
     @property
     def jh_base_url(self):
@@ -1033,18 +1094,7 @@ class ARCSpawner(BatchSpawnerRegexStates):
         env["JUPYTER_PORT"] = str(self.port)
         env["JUPYTERHUB_BASE_URL"] = self.jh_base_url
         env["CTADS_URL"] = self.jh_base_url + "/services/downloadservice/"
-        env["X509_USER_PROXY"] = os.environ.get(
-            "X509_USER_PROXY", "/certificateservice-data/dcache_clientcert.crt"
-        )
-
-        if self.user.name:
-            filename = self.user_to_path_fragment(self.user.name) + "__arc.crt"
-            own_certificate_file = os.path.join(
-                os.environ["CTACS_CERTIFICATE_DIR"], filename
-            )
-
-            if os.path.isfile(own_certificate_file):
-                env["X509_USER_PROXY"] = own_certificate_file
+        env["X509_USER_PROXY"] = self.certificate_file
 
         return env
 
